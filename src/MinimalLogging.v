@@ -1,4 +1,5 @@
 Require Import Coq.ZArith.BinInt.
+Require Import Coq.Init.Nat.
 Require Import riscv.util.BitWidths.
 Require Import riscv.util.Monads.
 Require Import riscv.Decode.
@@ -23,31 +24,34 @@ Section Riscv.
   Context {RF: Type}.
   Context {RFI: RegisterFile RF Register t}.
 
-  Inductive LogEvent :=
-  | EvLoadWord(addr: Z)(i: Instruction)
-  | EvStoreWord(addr: Z)(v: word 32).
-
-  Record RiscvMachineL{Log : Type} := mkRiscvMachineL {
+  Record RiscvMachineLog{Log : Type} := mkRiscvMachineLog {
     machine: @RiscvMachine t Mem RF;
     log: Log;
   }.
 
-  Definition with_machine{Log: Type} m (ml : @RiscvMachineL Log) := mkRiscvMachineL Log m ml.(log).
-  Definition with_log{Log: Type} (l : Log) (ml : @RiscvMachineL Log) := mkRiscvMachineL Log ml.(machine) l.
+  Definition with_machine{Log: Type} m (ml : @RiscvMachineLog Log) := mkRiscvMachineLog Log m ml.(log).
+  Definition with_log{Log: Type} (l : Log) (ml : @RiscvMachineLog Log) := mkRiscvMachineLog Log ml.(machine) l.
 
-  Definition liftL0{B Log: Type}(f: OState RiscvMachine B):  OState RiscvMachineL B :=
-    fun (s : @RiscvMachineL Log) => let (ob, ma) := f s.(machine) in (ob, with_machine ma s).
+  Definition putProgram{Log : Type}(prog: list (word 32))(addr: t)(ma: @RiscvMachineLog Log): @RiscvMachineLog Log :=
+    with_machine (putProgram prog addr ma.(machine)) ma.
 
-  Definition liftL1{A B Log: Type}(f: A -> OState RiscvMachine B): A -> OState RiscvMachineL B :=
-    fun a (s : @RiscvMachineL Log) => let (ob, ma) := f a s.(machine) in (ob, with_machine ma s).
+  Definition liftL0{B Log: Type}(f: OState RiscvMachine B):  OState RiscvMachineLog B :=
+    fun (s : @RiscvMachineLog Log) => let (ob, ma) := f s.(machine) in (ob, with_machine ma s).
+
+  Definition liftL1{A B Log: Type}(f: A -> OState RiscvMachine B): A -> OState RiscvMachineLog B :=
+    fun a (s : @RiscvMachineLog Log) => let (ob, ma) := f a s.(machine) in (ob, with_machine ma s).
 
   Definition liftL2{A1 A2 B Log: Type}(f: A1 -> A2 -> OState RiscvMachine B):
-    A1 -> A2 -> OState RiscvMachineL B :=
-    fun a1 a2 (s : @RiscvMachineL Log) => let (ob, ma) := f a1 a2 s.(machine) in (ob, with_machine ma s).
+    A1 -> A2 -> OState RiscvMachineLog B :=
+    fun a1 a2 (s : @RiscvMachineLog Log) => let (ob, ma) := f a1 a2 s.(machine) in (ob, with_machine ma s).
 
-  Definition RiscvMachineLMinimal := @RiscvMachineL (list LogEvent).
+  Inductive LogEventL :=
+  | EvLoadWord(addr: Z)(i: Instruction)
+  | EvStoreWord(addr: Z)(v: word 32).
 
-  Instance IsRiscvMachineLMinimal: RiscvProgram (OState RiscvMachineLMinimal) t :=  {|
+  Definition RiscvMachineL := @RiscvMachineLog (list LogEventL).
+
+  Instance IsRiscvMachineL: RiscvProgram (OState RiscvMachineL) t :=  {|
       getRegister := liftL1 getRegister;
       setRegister := liftL2 setRegister;
       getPC := liftL0 getPC;
@@ -72,9 +76,66 @@ Section Riscv.
       endCycle A := Return None;
   |}.
 
-  Definition putProgram{Log: Type}(prog: list (word 32))(addr: t)(ma: (@RiscvMachineL Log)): (@RiscvMachineL Log) :=
-    with_machine (putProgram prog addr ma.(machine)) ma.
+  Record MetricLog := mkMetricLog {
+    instructions: nat;
+    stores: nat;
+    loads: nat; (* Note that this also includes loads of the PC *)
+    jumps: nat;
+  }.
+
+  Definition EmptyMetricLog := mkMetricLog 0 0 0 0.
+
+  Definition incMetricInstructions (l : MetricLog) : MetricLog :=
+    mkMetricLog (S (instructions l)) (stores l) (loads l) (jumps l).
+
+  Definition incMetricStores (l : MetricLog) : MetricLog :=
+    mkMetricLog (instructions l) (S (stores l)) (loads l) (jumps l).
+
+  Definition incMetricLoads (l : MetricLog) : MetricLog :=
+    mkMetricLog (instructions l) (stores l) (S (loads l)) (jumps l).
+
+  Definition incMetricJumps (l : MetricLog) : MetricLog :=
+    mkMetricLog (instructions l) (stores l) (loads l) (S (jumps l)).
+
+  Definition RiscvMachineMetricLog := @RiscvMachineLog MetricLog.
+
+  Definition incLift0 operation incrementer: OState RiscvMachineMetricLog unit :=
+    m <- get;
+    put (with_log (incrementer m.(log)) m);;
+    liftL0 operation.
+
+  Definition incLift1{A r: Type} operation incrementer : A -> OState RiscvMachineMetricLog r :=
+    fun x =>
+      m <- get;
+      put (with_log (incrementer m.(log)) m);;
+      liftL1 operation x.
+
+  Definition incLift2{A B r: Type} operation incrementer : A -> B -> OState RiscvMachineMetricLog r :=
+    fun x y =>
+      m <- get;
+      put (with_log (incrementer m.(log)) m);;
+      liftL2 operation x y.
+
+  Instance IsRiscvMachineMetricLog: RiscvProgram (OState RiscvMachineMetricLog) t := {|
+      getRegister := liftL1 getRegister;
+      setRegister := liftL2 setRegister;
+      getPC := liftL0 getPC;
+      setPC := incLift1 setPC incMetricJumps;
+      loadByte := incLift1 loadByte incMetricLoads;
+      loadHalf := incLift1 loadHalf incMetricLoads;
+      loadWord := incLift1 loadWord incMetricLoads;
+      loadDouble := incLift1 loadDouble incMetricLoads;
+      storeByte := incLift2 storeByte incMetricStores;
+      storeHalf := incLift2 storeHalf incMetricStores;
+      storeWord := incLift2 storeWord incMetricStores;
+      storeDouble := incLift2 storeDouble incMetricStores;
+      step := incLift0 step incMetricInstructions;
+      getCSRField_MTVecBase := liftL0 getCSRField_MTVecBase;
+      endCycle A := Return None;
+  |}.
 
 End Riscv.
 
-Existing Instance IsRiscvMachineLMinimal. (* needed because it was defined inside a Section *)
+(* needed because defined inside of a Section *)
+Existing Instance IsRiscvMachineL.
+Existing Instance IsRiscvMachineMetricLog.

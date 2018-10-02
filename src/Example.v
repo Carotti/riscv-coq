@@ -69,19 +69,21 @@ Definition zeroedRiscvMachine: RiscvMachine := {|
     machineMem := zero_mem 100;
 |}.
 
-Definition zeroedRiscvMachineLMinimal: RiscvMachineLMinimal := {|
+(* Load Store logging of fib example *)
+
+Definition zeroedRiscvMachineL: RiscvMachineL := {|
     machine := zeroedRiscvMachine;
     log := nil;
 |}.
 
-Definition initialRiscvMachineLMinimal(imem: list MachineInt): RiscvMachineLMinimal :=
-  putProgram (map (@ZToWord 32) imem) (ZToReg 0) zeroedRiscvMachineLMinimal.
+Definition initialRiscvMachineL(imem: list MachineInt): RiscvMachineL:= 
+  putProgram (map (@ZToWord 32) imem) (ZToReg 0) zeroedRiscvMachineL.
 
-Definition run: nat -> RiscvMachineLMinimal -> (option unit) * RiscvMachineLMinimal := run.
- (* @run BitWidths32 MachineWidth32 (OState RiscvMachineLMinimal) (OState_Monad _) _ _ _ *)
+Definition runL: nat -> RiscvMachineL -> (option unit) * RiscvMachineL := run.
+ (* @run BitWidths32 MachineWidth32 (OState RiscvMachineL) (OState_Monad _) _ _ _ *)
 
-Definition fib6_L_final(fuel: nat): RiscvMachineLMinimal :=
-  match run fuel (initialRiscvMachineLMinimal fib6_riscv) with
+Definition fib6_L_final(fuel: nat): RiscvMachineL :=
+  match runL fuel (initialRiscvMachineL fib6_riscv) with
   | (answer, state) => state
   end.
 
@@ -97,6 +99,37 @@ Definition fib6_L_trace(fuel: nat) :=
 Eval cbv in (fib6_L_trace 50).
 
 Lemma fib6_res_is_13_by_running_it: exists fuel, fib6_L_res fuel = ZToReg 13.
+  exists 50%nat.
+  reflexivity.
+Qed.
+
+(* Opcode logging of fib example *)
+
+Definition zeroedRiscvMachineMetric: RiscvMachineLog := {|
+    machine := zeroedRiscvMachine;
+    log := EmptyMetricLog;
+|}.
+
+Definition runMetric: nat -> RiscvMachineMetricLog -> (option unit) * RiscvMachineMetricLog := run.
+ (* @run BitWidths32 MachineWidth32 (OState RiscvMachineL) (OState_Monad _) _ _ _ *)
+
+Definition initialRiscvMachineMetricLog(imem: list MachineInt): RiscvMachineMetricLog:= 
+  putProgram (map (@ZToWord 32) imem) (ZToReg 0) zeroedRiscvMachineMetric.
+
+Definition fib6_metric_final(fuel: nat): RiscvMachineMetricLog :=
+  match runMetric fuel (initialRiscvMachineMetricLog fib6_riscv) with
+  | (answer, state) => state
+  end.
+
+Definition fib6_metric_res(fuel: nat): word XLEN :=
+  (fib6_metric_final fuel).(machine).(core).(registers) 18.
+
+Definition fib6_metric_trace(fuel: nat) :=
+  (fib6_metric_final fuel).(log).
+
+Eval cbv in (fib6_metric_trace 50).
+
+Lemma fib6_metric_res_is_13_by_running_it: exists fuel, fib6_metric_res fuel = ZToReg 13.
   exists 50%nat.
   reflexivity.
 Qed.
