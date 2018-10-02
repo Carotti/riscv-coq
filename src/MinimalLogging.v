@@ -26,28 +26,28 @@ Section Riscv.
   Inductive LogEvent :=
   | EvLoadWord(addr: Z)(i: Instruction)
   | EvStoreWord(addr: Z)(v: word 32).
-  
-  Definition Log := list LogEvent.
-  
-  Record RiscvMachineL := mkRiscvMachineL {
+
+  Record RiscvMachineL{Log : Type} := mkRiscvMachineL {
     machine: @RiscvMachine t Mem RF;
     log: Log;
   }.
 
-  Definition with_machine m ml := mkRiscvMachineL m ml.(log).
-  Definition with_log l ml := mkRiscvMachineL ml.(machine) l.  
+  Definition with_machine{Log: Type} m (ml : @RiscvMachineL Log) := mkRiscvMachineL Log m ml.(log).
+  Definition with_log{Log: Type} (l : Log) (ml : @RiscvMachineL Log) := mkRiscvMachineL Log ml.(machine) l.
 
-  Definition liftL0{B: Type}(f: OState RiscvMachine B):  OState RiscvMachineL B :=
-    fun s => let (ob, ma) := f s.(machine) in (ob, with_machine ma s).
+  Definition liftL0{B Log: Type}(f: OState RiscvMachine B):  OState RiscvMachineL B :=
+    fun (s : @RiscvMachineL Log) => let (ob, ma) := f s.(machine) in (ob, with_machine ma s).
 
-  Definition liftL1{A B: Type}(f: A -> OState RiscvMachine B): A -> OState RiscvMachineL B :=
-    fun a s => let (ob, ma) := f a s.(machine) in (ob, with_machine ma s).
+  Definition liftL1{A B Log: Type}(f: A -> OState RiscvMachine B): A -> OState RiscvMachineL B :=
+    fun a (s : @RiscvMachineL Log) => let (ob, ma) := f a s.(machine) in (ob, with_machine ma s).
 
-  Definition liftL2{A1 A2 B: Type}(f: A1 -> A2 -> OState RiscvMachine B):
+  Definition liftL2{A1 A2 B Log: Type}(f: A1 -> A2 -> OState RiscvMachine B):
     A1 -> A2 -> OState RiscvMachineL B :=
-    fun a1 a2 s => let (ob, ma) := f a1 a2 s.(machine) in (ob, with_machine ma s).
-                                           
-  Instance IsRiscvMachineL: RiscvProgram (OState RiscvMachineL) t :=  {|
+    fun a1 a2 (s : @RiscvMachineL Log) => let (ob, ma) := f a1 a2 s.(machine) in (ob, with_machine ma s).
+
+  Definition RiscvMachineLMinimal := @RiscvMachineL (list LogEvent).
+
+  Instance IsRiscvMachineLMinimal: RiscvProgram (OState RiscvMachineLMinimal) t :=  {|
       getRegister := liftL1 getRegister;
       setRegister := liftL2 setRegister;
       getPC := liftL0 getPC;
@@ -72,9 +72,9 @@ Section Riscv.
       endCycle A := Return None;
   |}.
 
-  Definition putProgram(prog: list (word 32))(addr: t)(ma: RiscvMachineL): RiscvMachineL :=
+  Definition putProgram{Log: Type}(prog: list (word 32))(addr: t)(ma: (@RiscvMachineL Log)): (@RiscvMachineL Log) :=
     with_machine (putProgram prog addr ma.(machine)) ma.
 
 End Riscv.
 
-Existing Instance IsRiscvMachineL. (* needed because it was defined inside a Section *)
+Existing Instance IsRiscvMachineLMinimal. (* needed because it was defined inside a Section *)

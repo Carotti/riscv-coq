@@ -69,26 +69,26 @@ Definition zeroedRiscvMachine: RiscvMachine := {|
     machineMem := zero_mem 100;
 |}.
 
-Definition zeroedRiscvMachineL: RiscvMachineL := {|
+Definition zeroedRiscvMachineLMinimal: RiscvMachineLMinimal := {|
     machine := zeroedRiscvMachine;
     log := nil;
 |}.
 
-Definition initialRiscvMachineL(imem: list MachineInt): RiscvMachineL :=
-  putProgram (map (@ZToWord 32) imem) (ZToReg 0) zeroedRiscvMachineL.
+Definition initialRiscvMachineLMinimal(imem: list MachineInt): RiscvMachineLMinimal :=
+  putProgram (map (@ZToWord 32) imem) (ZToReg 0) zeroedRiscvMachineLMinimal.
 
-Definition run: nat -> RiscvMachineL -> (option unit) * RiscvMachineL := run.
- (* @run BitWidths32 MachineWidth32 (OState RiscvMachineL) (OState_Monad _) _ _ _ *)
+Definition run: nat -> RiscvMachineLMinimal -> (option unit) * RiscvMachineLMinimal := run.
+ (* @run BitWidths32 MachineWidth32 (OState RiscvMachineLMinimal) (OState_Monad _) _ _ _ *)
 
-Definition fib6_L_final(fuel: nat): RiscvMachineL :=
-  match run fuel (initialRiscvMachineL fib6_riscv) with
+Definition fib6_L_final(fuel: nat): RiscvMachineLMinimal :=
+  match run fuel (initialRiscvMachineLMinimal fib6_riscv) with
   | (answer, state) => state
   end.
 
 Definition fib6_L_res(fuel: nat): word XLEN :=
   (fib6_L_final fuel).(machine).(core).(registers) 18.
 
-Definition fib6_L_trace(fuel: nat): Log :=
+Definition fib6_L_trace(fuel: nat) :=
   (fib6_L_final fuel).(log).
 
 (* only uncomment this if you're sure there are no admits in the computational parts,
