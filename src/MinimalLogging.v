@@ -1,5 +1,5 @@
 Require Import Coq.ZArith.BinInt.
-Require Import Coq.Init.Nat.
+Require Import Coq.ZArith.BinIntDef.
 Require Import riscv.util.BitWidths.
 Require Import riscv.util.Monads.
 Require Import riscv.Decode.
@@ -77,25 +77,25 @@ Section Riscv.
   |}.
 
   Record MetricLog := mkMetricLog {
-    instructions: nat;
-    stores: nat;
-    loads: nat; (* Note that this also includes loads of the PC *)
-    jumps: nat;
+    instructions: Z;
+    stores: Z;
+    loads: Z; (* Note that this also includes loads of the PC *)
+    jumps: Z;
   }.
 
   Definition EmptyMetricLog := mkMetricLog 0 0 0 0.
 
   Definition incMetricInstructions (l : MetricLog) : MetricLog :=
-    mkMetricLog (S (instructions l)) (stores l) (loads l) (jumps l).
+    mkMetricLog (1 + (instructions l)) (stores l) (loads l) (jumps l).
 
   Definition incMetricStores (l : MetricLog) : MetricLog :=
-    mkMetricLog (instructions l) (S (stores l)) (loads l) (jumps l).
+    mkMetricLog (instructions l) (1 + (stores l)) (loads l) (jumps l).
 
   Definition incMetricLoads (l : MetricLog) : MetricLog :=
-    mkMetricLog (instructions l) (stores l) (S (loads l)) (jumps l).
+    mkMetricLog (instructions l) (stores l) (1 + (loads l)) (jumps l).
 
   Definition incMetricJumps (l : MetricLog) : MetricLog :=
-    mkMetricLog (instructions l) (stores l) (loads l) (S (jumps l)).
+    mkMetricLog (instructions l) (stores l) (loads l) (1 + (jumps l)).
 
   Definition RiscvMachineMetricLog := @RiscvMachineLog MetricLog.
 
