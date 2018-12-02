@@ -25,7 +25,7 @@ Section Riscv.
   Context {RFI: RegisterFile RF Register t}.
 
   Record RiscvMachineLog{Log : Type} := mkRiscvMachineLog {
-    machine: @RiscvMachine t Mem RF;
+    machine:> @RiscvMachine t Mem RF;
     log: Log;
   }.
 
@@ -33,17 +33,17 @@ Section Riscv.
   Definition with_log{Log: Type} (l : Log) (ml : @RiscvMachineLog Log) := mkRiscvMachineLog Log ml.(machine) l.
 
   Definition putProgram{Log : Type}(prog: list (word 32))(addr: t)(ma: @RiscvMachineLog Log): @RiscvMachineLog Log :=
-    with_machine (putProgram prog addr ma.(machine)) ma.
+    with_machine (putProgram prog addr ma) ma.
 
   Definition liftL0{B Log: Type}(f: OState RiscvMachine B):  OState RiscvMachineLog B :=
-    fun (s : @RiscvMachineLog Log) => let (ob, ma) := f s.(machine) in (ob, with_machine ma s).
+    fun (s : @RiscvMachineLog Log) => let (ob, ma) := f s in (ob, with_machine ma s).
 
   Definition liftL1{A B Log: Type}(f: A -> OState RiscvMachine B): A -> OState RiscvMachineLog B :=
-    fun a (s : @RiscvMachineLog Log) => let (ob, ma) := f a s.(machine) in (ob, with_machine ma s).
+    fun a (s : @RiscvMachineLog Log) => let (ob, ma) := f a s in (ob, with_machine ma s).
 
   Definition liftL2{A1 A2 B Log: Type}(f: A1 -> A2 -> OState RiscvMachine B):
     A1 -> A2 -> OState RiscvMachineLog B :=
-    fun a1 a2 (s : @RiscvMachineLog Log) => let (ob, ma) := f a1 a2 s.(machine) in (ob, with_machine ma s).
+    fun a1 a2 (s : @RiscvMachineLog Log) => let (ob, ma) := f a1 a2 s in (ob, with_machine ma s).
 
   Inductive LogEventL :=
   | EvLoadWord(addr: Z)(i: Instruction)
