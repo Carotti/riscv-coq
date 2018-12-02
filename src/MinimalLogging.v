@@ -35,6 +35,17 @@ Section Riscv.
   Definition putProgram{Log : Type}(prog: list (word 32))(addr: t)(ma: @RiscvMachineLog Log): @RiscvMachineLog Log :=
     with_machine (putProgram prog addr ma) ma.
 
+  Definition with_registers_log{Log : Type} r (ma: @RiscvMachineLog Log) :=
+    (@with_machine Log) (with_registers r ma) ma.
+  Definition with_pc_log{Log : Type} p (ma: @RiscvMachineLog Log) :=
+    (@with_machine Log) (with_pc p ma) ma.
+  Definition with_nextPC_log{Log : Type} npc (ma: @RiscvMachineLog Log) :=
+    (@with_machine Log) (with_nextPC npc ma) ma.
+  Definition with_exceptionHandlerAddr_log{Log : Type} eh (ma: @RiscvMachineLog Log) :=
+    (@with_machine Log) (with_exceptionHandlerAddr eh ma) ma.
+  Definition with_machineMem_log{Log : Type} m (ma: @RiscvMachineLog Log) :=
+    (@with_machine Log) (with_machineMem m ma) ma.
+
   Definition liftL0{B Log: Type}(f: OState RiscvMachine B):  OState RiscvMachineLog B :=
     fun (s : @RiscvMachineLog Log) => let (ob, ma) := f s in (ob, with_machine ma s).
 
