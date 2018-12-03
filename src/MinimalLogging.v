@@ -24,6 +24,7 @@ Section Riscv.
   Context {RF: Type}.
   Context {RFI: RegisterFile RF Register t}.
 
+  Print RiscvMachine.
   Record RiscvMachineLog{Log : Type} := mkRiscvMachineLog {
     machine:> @RiscvMachine t Mem RF;
     log: Log;
