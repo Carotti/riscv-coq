@@ -98,16 +98,16 @@ Section Riscv.
   Definition EmptyMetricLog := mkMetricLog 0 0 0 0.
 
   Definition incMetricInstructions (l : MetricLog) : MetricLog :=
-    mkMetricLog (1 + (instructions l)) (stores l) (loads l) (jumps l).
+    mkMetricLog (Z.succ (instructions l)) (stores l) (loads l) (jumps l).
 
   Definition incMetricStores (l : MetricLog) : MetricLog :=
-    mkMetricLog (instructions l) (1 + (stores l)) (loads l) (jumps l).
+    mkMetricLog (instructions l) (Z.succ (stores l)) (loads l) (jumps l).
 
   Definition incMetricLoads (l : MetricLog) : MetricLog :=
-    mkMetricLog (instructions l) (stores l) (1 + (loads l)) (jumps l).
+    mkMetricLog (instructions l) (stores l) (Z.succ (loads l)) (jumps l).
 
   Definition incMetricJumps (l : MetricLog) : MetricLog :=
-    mkMetricLog (instructions l) (stores l) (loads l) (1 + (jumps l)).
+    mkMetricLog (instructions l) (stores l) (loads l) (Z.succ (jumps l)).
 
   Definition RiscvMachineMetricLog := @RiscvMachineLog MetricLog.
 
