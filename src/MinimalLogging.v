@@ -109,6 +109,18 @@ Section Riscv.
   Definition incMetricJumps (l : MetricLog) : MetricLog :=
     mkMetricLog (instructions l) (stores l) (loads l) (Z.succ (jumps l)).
 
+  Definition decMetricInstructions (l : MetricLog) : MetricLog :=
+    mkMetricLog (Z.pred (instructions l)) (stores l) (loads l) (jumps l).
+
+  Definition decMetricStores (l : MetricLog) : MetricLog :=
+    mkMetricLog (instructions l) (Z.pred (stores l)) (loads l) (jumps l).
+
+  Definition decMetricLoads (l : MetricLog) : MetricLog :=
+    mkMetricLog (instructions l) (stores l) (Z.pred (loads l)) (jumps l).
+
+  Definition decMetricJumps (l : MetricLog) : MetricLog :=
+    mkMetricLog (instructions l) (stores l) (loads l) (Z.pred (jumps l)).
+
   Definition RiscvMachineMetricLog := @RiscvMachineLog MetricLog.
 
   Definition incLift0 operation incrementer: OState RiscvMachineMetricLog unit :=
@@ -147,6 +159,29 @@ Section Riscv.
   |}.
 
 End Riscv.
+
+  Ltac unfold_log_inc_dec :=
+    unfold incMetricInstructions;
+    unfold incMetricStores;
+    unfold incMetricLoads;
+    unfold incMetricJumps;
+    unfold decMetricInstructions;
+    unfold decMetricStores;
+    unfold decMetricLoads;
+    unfold decMetricJumps;
+    simpl;
+    repeat rewrite Z.pred_succ; repeat rewrite Z.succ_pred.
+
+  Ltac fold_log :=
+    match goal with
+    | _: _ |- context[?log] =>
+      match log with
+      | {| instructions := instructions ?x;
+         stores := stores ?x;
+         loads := loads ?x;
+         jumps := jumps ?x |} => replace log with x by (destruct x; reflexivity)
+      end
+    end.
 
 (* needed because defined inside of a Section *)
 Existing Instance IsRiscvMachineL.
