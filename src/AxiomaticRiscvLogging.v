@@ -24,11 +24,9 @@ Section AxiomaticRiscvL.
   Context {MemIsMem: Memory Mem t}.
 
   Local Notation RiscvMachine := (@RiscvMachineLog t Mem RF MetricLog).
-
-  Context {RVM: RiscvProgram (OState RiscvMachine) t}.
   
   (* assumes generic translate and raiseException functions *)
-  Context {RVS: @RiscvState (OState RiscvMachine) t _ _ RVM}.
+  Context {RVS: @RiscvState (OState RiscvMachine) t _ _ IsRiscvMachineMetricLog}.
 
   Class AxiomaticRiscvL :=  mkAxiomaticRiscvL {
       
