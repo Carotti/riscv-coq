@@ -100,6 +100,12 @@ Section Riscv.
   Definition incMetricInstructions (l : MetricLog) : MetricLog :=
     mkMetricLog (Z.succ (instructions l)) (stores l) (loads l) (jumps l).
 
+  Definition incMetricInstructions_n (n : Z) (l : MetricLog)  : MetricLog :=
+    mkMetricLog ((instructions l) + n) (stores l) (loads l) (jumps l).
+
+  Definition decMetricInstructions_n (n : Z) (l : MetricLog)  : MetricLog :=
+    mkMetricLog ((instructions l) - n) (stores l) (loads l) (jumps l).
+
   Definition incMetricStores (l : MetricLog) : MetricLog :=
     mkMetricLog (instructions l) (Z.succ (stores l)) (loads l) (jumps l).
 
