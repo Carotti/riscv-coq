@@ -10,6 +10,8 @@ Require Import riscv.util.PowerFunc.
 Require Import riscv.Utility.
 Require Import Coq.Lists.List. Import ListNotations.
 Require Import riscv.Minimal.
+Require Import Coq.micromega.Lia.
+Require Import Coq.omega.Omega.
 
 Section Riscv.
 
@@ -97,35 +99,20 @@ Section Riscv.
 
   Definition EmptyMetricLog := mkMetricLog 0 0 0 0.
 
-  Definition incMetricInstructions (l : MetricLog) : MetricLog :=
-    mkMetricLog (Z.succ (instructions l)) (stores l) (loads l) (jumps l).
+  Definition withInstructions i log := mkMetricLog i (stores log) (loads log) (jumps log).
+  Definition withStores s log := mkMetricLog (instructions log) s (loads log) (jumps log).
+  Definition withLoads l log := mkMetricLog (instructions log) (stores log) l (jumps log).
+  Definition withJumps j log := mkMetricLog (instructions log) (stores log) (loads log) j.
 
-  Definition incMetricInstructions_n (n : Z) (l : MetricLog)  : MetricLog :=
-    mkMetricLog ((instructions l) + n) (stores l) (loads l) (jumps l).
-
-  Definition decMetricInstructions_n (n : Z) (l : MetricLog)  : MetricLog :=
-    mkMetricLog ((instructions l) - n) (stores l) (loads l) (jumps l).
-
-  Definition incMetricStores (l : MetricLog) : MetricLog :=
-    mkMetricLog (instructions l) (Z.succ (stores l)) (loads l) (jumps l).
-
-  Definition incMetricLoads (l : MetricLog) : MetricLog :=
-    mkMetricLog (instructions l) (stores l) (Z.succ (loads l)) (jumps l).
-
-  Definition incMetricJumps (l : MetricLog) : MetricLog :=
-    mkMetricLog (instructions l) (stores l) (loads l) (Z.succ (jumps l)).
-
-  Definition decMetricInstructions (l : MetricLog) : MetricLog :=
-    mkMetricLog (Z.pred (instructions l)) (stores l) (loads l) (jumps l).
-
-  Definition decMetricStores (l : MetricLog) : MetricLog :=
-    mkMetricLog (instructions l) (Z.pred (stores l)) (loads l) (jumps l).
-
-  Definition decMetricLoads (l : MetricLog) : MetricLog :=
-    mkMetricLog (instructions l) (stores l) (Z.pred (loads l)) (jumps l).
-
-  Definition decMetricJumps (l : MetricLog) : MetricLog :=
-    mkMetricLog (instructions l) (stores l) (loads l) (Z.pred (jumps l)).
+  Definition addMetricInstructions n log := withInstructions (instructions log + n) log.
+  Definition addMetricStores n log := withStores (stores log + n) log.
+  Definition addMetricLoads n log := withLoads (loads log + n) log.
+  Definition addMetricJumps n log := withJumps (jumps log + n) log.
+  
+  Definition subMetricInstructions n log := withInstructions (instructions log - n) log.
+  Definition subMetricStores n log := withStores (stores log - n) log.
+  Definition subMetricLoads n log := withLoads (loads log - n) log.
+  Definition subMetricJumps n log := withJumps (jumps log - n) log.
 
   Definition RiscvMachineMetricLog := @RiscvMachineLog MetricLog.
 
@@ -150,44 +137,71 @@ Section Riscv.
       getRegister := liftL1 getRegister;
       setRegister := liftL2 setRegister;
       getPC := liftL0 getPC;
-      setPC := incLift1 setPC incMetricJumps;
-      loadByte := incLift1 loadByte incMetricLoads;
-      loadHalf := incLift1 loadHalf incMetricLoads;
-      loadWord := incLift1 loadWord incMetricLoads;
-      loadDouble := incLift1 loadDouble incMetricLoads;
-      storeByte := incLift2 storeByte incMetricStores;
-      storeHalf := incLift2 storeHalf incMetricStores;
-      storeWord := incLift2 storeWord incMetricStores;
-      storeDouble := incLift2 storeDouble incMetricStores;
-      step := incLift0 step incMetricInstructions;
+      setPC := incLift1 setPC (addMetricJumps 1);
+      loadByte := incLift1 loadByte (addMetricLoads 1);
+      loadHalf := incLift1 loadHalf (addMetricLoads 1);
+      loadWord := incLift1 loadWord (addMetricLoads 1);
+      loadDouble := incLift1 loadDouble (addMetricLoads 1);
+      storeByte := incLift2 storeByte (addMetricStores 1);
+      storeHalf := incLift2 storeHalf (addMetricStores 1);
+      storeWord := incLift2 storeWord (addMetricStores 1);
+      storeDouble := incLift2 storeDouble (addMetricStores 1);
+      step := incLift0 step (addMetricInstructions 1);
       getCSRField_MTVecBase := liftL0 getCSRField_MTVecBase;
       endCycle A := Return None;
   |}.
 
-End Riscv.
+  End Riscv.
 
-  Ltac unfold_log_inc_dec :=
-    unfold incMetricInstructions;
-    unfold incMetricStores;
-    unfold incMetricLoads;
-    unfold incMetricJumps;
-    unfold decMetricInstructions;
-    unfold decMetricStores;
-    unfold decMetricLoads;
-    unfold decMetricJumps;
-    simpl;
-    repeat rewrite Z.pred_succ; repeat rewrite Z.succ_pred.
+  Hint Unfold
+       withInstructions
+       withLoads
+       withStores
+       withJumps
+       addMetricInstructions
+       addMetricLoads
+       addMetricStores
+       addMetricJumps
+       subMetricInstructions
+       subMetricLoads
+       subMetricStores
+       subMetricJumps
+  : unf_metric_log.
+  
+  Ltac unfold_MetricLog := autounfold with unf_metric_log in *.
 
-  Ltac fold_log :=
+  Ltac fold_MetricLog :=
     match goal with
-    | _: _ |- context[?log] =>
-      match log with
-      | {| instructions := instructions ?x;
-         stores := stores ?x;
-         loads := loads ?x;
-         jumps := jumps ?x |} => replace log with x by (destruct x; reflexivity)
+    | _ : _ |- context[?x] =>
+      match x with
+      | {| instructions := instructions ?y;
+           stores := stores ?y;
+           loads := loads ?y;
+           jumps := jumps ?y; |} => replace x with y by (destruct y; reflexivity)
       end
     end.
+
+  Ltac simpl_MetricLog :=
+    cbn [fst snd] in *; (* Unfold logs in tuples *)
+    cbn [instructions loads stores jumps] in *.
+
+  Ltac try_equality_MetricLog :=
+    repeat match goal with
+           | H : MetricLog |- context[{| instructions := ?i; |}] =>
+             progress replace i with (instructions H) by omega
+           | H : MetricLog |- context[{| stores := ?i; |}] =>
+             progress replace i with (stores H) by omega      
+           | H : MetricLog |- context[{| loads := ?i; |}] =>
+             progress replace i with (loads H) by omega      
+           | H : MetricLog |- context[{| jumps := ?i; |}] =>
+             progress replace i with (jumps H) by omega
+           end.
+
+  Ltac solve_MetricLog :=
+    repeat unfold_MetricLog;
+    repeat simpl_MetricLog;
+    try_equality_MetricLog;
+    lia || fold_MetricLog.
 
 (* needed because defined inside of a Section *)
 Existing Instance IsRiscvMachineL.

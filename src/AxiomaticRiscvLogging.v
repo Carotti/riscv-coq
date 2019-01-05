@@ -103,14 +103,14 @@ Section AxiomaticRiscvL.
       Bind_setPC: forall {A: Type} (v: t)
                     (f: unit -> OState RiscvMachine A) (initialL: RiscvMachine),
           (Bind (setPC v) f) initialL =
-          (f tt) (with_nextPC_log v (with_log (incMetricJumps initialL.(log)) initialL));
+          (f tt) (with_nextPC_log v (with_log (addMetricJumps 1 initialL.(log)) initialL));
 
       Bind_step: forall {A: Type} (f: unit -> OState RiscvMachine A) m,
           (Bind step f) m =
-          (f tt) (with_nextPC_log (add m.(core).(nextPC) (ZToReg 4)) (with_pc_log m.(core).(nextPC) (with_log (incMetricInstructions m.(log)) m)));
+          (f tt) (with_nextPC_log (add m.(core).(nextPC) (ZToReg 4)) (with_pc_log m.(core).(nextPC) (with_log (addMetricInstructions 1 m.(log)) m)));
 
       execState_step: forall (m : RiscvMachine),
-          step m = (Some tt, with_nextPC_log (add m.(core).(nextPC) (ZToReg 4)) (with_pc_log m.(core).(nextPC) (with_log (incMetricInstructions m.(log)) m)));
+          step m = (Some tt, with_nextPC_log (add m.(core).(nextPC) (ZToReg 4)) (with_pc_log m.(core).(nextPC) (with_log (addMetricInstructions 1 m.(log)) m)));
       
       execState_Return: forall {S A} (s: S) (a: A),
           (Return a) s = (Some a, s);
